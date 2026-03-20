@@ -1,0 +1,100 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environments
+.venv/
+venv/
+ENV/
+env/
+# 针对 WSL 中常见的环境名
+.env/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Local Configs (重要：防止敏感信息入库)
+.env
+*.local
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Node.js dependencies
+node_modules/
+
+# Build output (Vue CLI / Vite 默认输出目录)
+dist/
+dist-ssr/
+.cache/
+.temp/
+coverage/
+
+# Environment variables
+.env.local
+.env.*.local
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Dependency lock files (可选是否提交，通常建议提交)
+# 如果你希望锁定版本，应提交 package-lock.json / yarn.lock / pnpm-lock.yaml
+# 所以这些文件 **不应** 被忽略（除非你有特殊理由）
+
+# Editor directories
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+
+log/
+*.log
+logs/
+
+references/
+dev_test/
+run/
+test_case/
+frontend/
+.trae/
+
+TODO.md
+go-judge
+
+debug.txt
