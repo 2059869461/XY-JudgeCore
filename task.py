@@ -1,7 +1,7 @@
-from core.redis import redis_client
+from .redis import redis_client
 import logging
 import socket
-from config import settings
+from .config import settings
 from pydantic import BaseModel
 import time
 #如果使用docker需要处理proc的挂载，只读挂载

@@ -1,8 +1,8 @@
-from core.redis import redis_client
+from .redis import redis_client
 import asyncio
 import logging
 import socket
-from config import settings
+from .config import settings
 from .resource import ResourceManager
 from .task import JudgeTask,TaskFetcher
 from .processor import TaskProcessor

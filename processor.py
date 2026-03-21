@@ -9,7 +9,7 @@ from .task import JudgeTask
 from .result import JudgeResult, JudgeStatus, CaseResult
 import json
 from .gojudge.client import SandboxErrorBase
-from config import settings
+from .config import settings
 
 logger = logging.getLogger(__name__)
 """
