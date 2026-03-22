@@ -1,16 +1,20 @@
+from __future__ import annotations
 import logging
 import asyncio
 from pathlib import Path
 
 from .gojudge.client import GoJudgeClient, TaskContext
 from .gojudge.schemas import *
-from .languages import get_language_config
+from .languages import get_language_config,Language
 from .task import JudgeTask
 from .result import JudgeResult, JudgeStatus, CaseResult
 import json
 from .gojudge.client import SandboxErrorBase
 from .config import settings
-
+from .checker import CheckerCompileError
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from .checker import CheckerManager
 logger = logging.getLogger(__name__)
 """
 需要实现 1.checker提前编译缓存在gojudge内部，这个应该由worker初始化的时候负责，获得文件ID,另外可考虑编译好后直接挂载入gojudge
@@ -35,9 +39,9 @@ class SandboxRunError(SandboxErrorBase):
 class InvalidLanguage(Exception):
     pass
 class TaskProcessor:
-    def __init__(self,client:GoJudgeClient) -> None:
+    def __init__(self,client:GoJudgeClient,checker_manager:CheckerManager|None=None) -> None:
         self.client = client
-
+        self.checker_manager = checker_manager
     async def compile(self,language:int,src:str,ctx:TaskContext,)->tuple[bool,str]:
         """
         
@@ -52,7 +56,9 @@ class TaskProcessor:
             language_config = get_language_config(language)
         except ValueError:
             raise InvalidLanguage(f"不支持的语言:{language}")
-
+        if language_config.compile_args is None: #非编译的语言直接上传文件然后返回
+            file_id  = await ctx.upload_file(name=language_config.exe_name,content=src)
+            return True,file_id
         cmd = Cmd(
             args = language_config.compile_args,
             env = language_config.env,
@@ -78,7 +84,6 @@ class TaskProcessor:
         
         result = results[0]
         if result.status!=Status.Accepted :
-            #return False,"mock compile error"
             return False,result.files.get("stderr")
         if not result.fileIds:
             raise SandboxRunError("未找到编译后的文件id")
@@ -141,7 +146,7 @@ class TaskProcessor:
             memory_kb=run_result.memory //1024
         )            
 
-    async def run(self,test_case_id:int,test_case_path:str,mode:int,cpu_limit:int,memory_limit:int,language:int,file_id:str,ctx:TaskContext)->CaseResult:  
+    async def run(self,test_case_id:int,test_case_path:str,mode:int,cpu_limit:int,memory_limit:int,language:int,file_id:str,ctx:TaskContext,spj:bool=False,problem_id:int|None=None)->CaseResult:  
         language_config = get_language_config(language)
         cpu_limit = cpu_limit * 1000 * 1000 #ms -> ns
         memory_limit = memory_limit * 1024 * 1024#mb -> b
@@ -163,7 +168,12 @@ class TaskProcessor:
             }
 
         )
-        checker_config = get_language_config(666)
+        checker_config = get_language_config(Language.CHECKER)
+        assert self.checker_manager is not None
+        if spj:
+            checker_id =await  self.checker_manager.get_checker(problem_id=problem_id)
+        else:
+            checker_id = await self.checker_manager.get_checker()
         cmd_checker = Cmd(
             args=["./checker","input.in",f"{test_case_id}.out",str(mode)],
             env=checker_config.env,
@@ -178,7 +188,7 @@ class TaskProcessor:
             procLimit=50,
             copyIn={
                 "input.in":MemoryFile(content=""),
-                "checker":LocalFile(src="./checker"),
+                "checker":PreparedFile(fileId=checker_id),
                 f"{test_case_id}.out":LocalFile(src=test_case_path+".out")
                 #test_case_path:CmdFile(src=test_case_path),
             }
@@ -274,7 +284,11 @@ class TaskProcessor:
             logger.error(f"处理提交:{task.solution_id}过程出错:JSON格式错误，无法解析: {settings.test_case_dir}/{task.problem_id}/info.json")
         except PermissionError:
             logger.error(f"处理提交:{task.solution_id}过程出错:权限不足，无法读取文件: {settings.test_case_dir}/{task.problem_id}/info.json")
-
+        except CheckerCompileError as e:
+            if e.problem_id is None:
+                logger.fatal(f"Checker 编译失败,无法进行判题,错误信息:{e}")
+            else:
+                logger.error(f"题目:{e.problem_id}的spj checker编译失败,错误信息:{e}")#后续可考虑主动掠过该题目的task,直到恢复
 
         return JudgeResult(
             solution_id=task.solution_id,

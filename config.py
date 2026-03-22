@@ -2,7 +2,7 @@ from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 import os
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env" if not os.getenv("TESTING") else None, env_file_encoding="utf-8")
+    model_config = SettingsConfigDict(env_file=".env" if not os.getenv("TESTING") else None, env_file_encoding="utf-8",extra="ignore")
     testing : bool = Field(default=False,validation_alias="TESTING")
     redis_url: str = Field(
         default="redis://localhost:6379",

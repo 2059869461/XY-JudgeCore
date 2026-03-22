@@ -1,4 +1,4 @@
-# JudgeWorker
+# XY-JudgeCore
 
 基于 Redis Stream 与 go-judge 的高性能异步判题 Worker。
 
@@ -24,7 +24,7 @@ JudgeWorker 作为独立服务运行，与业务系统完全解耦：
 **集成只需一个 Redis Stream**：
 
 - 后端往 `judge:tasks` 推送判题任务
-- JudgeWorker 从 `judge:results` 读取判题结果
+- JudgeWorker 向 `judge:results` 推送判题结果
 - 无需任何 API 调用、无需共享数据库、无需直接通信
 
 **水平扩展，按需伸缩**：
@@ -106,7 +106,7 @@ JudgeWorker 作为独立服务运行，与业务系统完全解耦：
 {
   "task": {
     "solution_id": 1,
-    "language": 1,
+    "language": 5,
     "src": "#include...",
     "max_cpu_time": 1000,
     "max_memory": 256,
@@ -145,8 +145,6 @@ JudgeWorker 作为独立服务运行，与业务系统完全解耦：
 - **OI 赛制**：根据 `pass_rate` 计算部分分（如 7500 表示通过 75%）
 - **IOI 赛制**：根据 `result_list` 获取每个测试点的得分
 
-  <br />
-
 ### 后端集成示例
 
 ```python
@@ -158,7 +156,7 @@ r = redis.Redis()
 # 提交判题任务
 task = {
     "solution_id": 1,
-    "language": 1,  # C++
+    "language": 5,  # C++14
     "src": "#include <iostream>\nint main() { std::cout << 'Hello'; }",
     "max_cpu_time": 1000,
     "max_memory": 256,
@@ -196,12 +194,22 @@ judgeworker/
 
 ## 支持语言
 
-| ID | 语言     | 编译器         | 编译时限 | 内存限制  |
-| -- | ------ | ----------- | ---- | ----- |
-| 0  | C      | gcc (C99)   | 3s   | 256MB |
-| 1  | C++    | g++ (C++14) | 10s  | 512MB |
-| 3  | Java   | javac       | 15s  | 1GB   |
-| 6  | Python | python3     | 5s   | 256MB |
+| ID | 语言     | 编译器/解释器      | 编译时限 | 内存限制  |
+| -- | ------ | -------------- | ---- | ----- |
+| 0  | C99    | gcc            | 3s   | 256MB |
+| 1  | C11    | gcc            | 3s   | 256MB |
+| 2  | C17    | gcc            | 3s   | 256MB |
+| 3  | C23    | gcc            | 3s   | 256MB |
+| 4  | C++11  | g++            | 10s  | 512MB |
+| 5  | C++14  | g++            | 10s  | 512MB |
+| 6  | C++17  | g++            | 10s  | 512MB |
+| 7  | C++20  | g++            | 10s  | 512MB |
+| 8  | C++23  | g++            | 10s  | 512MB |
+| 9  | Java   | javac          | 15s  | 1GB   |
+| 10 | Go     | go build       | 15s  | 512MB |
+| 11 | Rust   | rustc          | 20s  | 1GB   |
+| 12 | Python3| python3        | -    | 128MB |
+| 13 | NodeJS | node           | -    | 128MB |
 
 ***
 
@@ -264,3 +272,9 @@ python -m judgeworker.worker
 MIT License
 
 Copyright (c) 2026 响滩
+
+***
+
+## 致谢
+
+本项目基于 [go-judge](https://github.com/criyle/go-judge) 沙箱引擎实现，感谢作者提供的优秀开源项目。

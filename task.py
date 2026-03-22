@@ -3,6 +3,7 @@ import logging
 import socket
 from .config import settings
 from pydantic import BaseModel
+from .languages import Language
 import time
 #如果使用docker需要处理proc的挂载，只读挂载
 #内核大于4.20 优先使用psi作为负载指标
@@ -22,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 class JudgeTask(BaseModel):
     solution_id: int
-    language: int
+    language: Language
     src: str
     max_cpu_time: int  # 毫秒
     max_memory: int  # mb 

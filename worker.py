@@ -8,6 +8,7 @@ from .task import JudgeTask,TaskFetcher
 from .processor import TaskProcessor
 from .gojudge.client import GoJudgeClient
 from .gojudge.client import SandboxErrorBase
+from .checker import  CheckerManager,CheckerCompileError
 #如果使用docker需要处理proc的挂载，只读挂载
 #内核大于4.20 优先使用psi作为负载指标
 # 配置日志
@@ -39,7 +40,8 @@ class JudgeWorker:
         self.GROUP = "judge-workers"
         self.fetcher = TaskFetcher()
         self.resource = ResourceManager()
-        self.processor = TaskProcessor(self.client)
+        self.processor = TaskProcessor(client=self.client)
+        self.checker_manager = None
         self.sandbox_ok = False
 
     async def wait_for_sandbox(self):
@@ -89,29 +91,31 @@ class JudgeWorker:
         
         # 初始化 CPU 统计（用于传统模式）
         self.resource.check_legacy_resources()
+        async with self.client.task_context() as ctx:
+            self.checker_manager = CheckerManager(ctx,self.client,processor=self.processor)
+            self.processor.checker_manager = self.checker_manager
+            while self.running:
+                if not self.sandbox_ok:
+                    await self.wait_for_sandbox()
+                # 1. 信号量先行 (The Gatekeeper)，必须获取信号量之后才会进行，如果没有就挂起不占用资源
+                await self.semaphore.acquire()
 
-        while self.running:
-            if not self.sandbox_ok:
-                await self.wait_for_sandbox()
-            # 1. 信号量先行 (The Gatekeeper)，必须获取信号量之后才会进行，如果没有就挂起不占用资源
-            await self.semaphore.acquire()
+                try:
 
-            try:
+                    await self.resource.wait_for_resources()
+                    msg_id,task = await self.fetcher.fetch_one()
 
-                await self.resource.wait_for_resources()
-                msg_id,task = await self.fetcher.fetch_one()
+                    if not msg_id or not task:#任意一个为空说明发生意外已经被taskfetcher ack掉了直接处理下一个
+                        self.semaphore.release()
+                        continue
 
-                if not msg_id or not task:#任意一个为空说明发生意外已经被taskfetcher ack掉了直接处理下一个
+                    asyncio.create_task(self.process_task(msg_id, task,self.processor, self.semaphore))
+                    
+                except Exception as e:
+                    logger.error(f"主循环发生错误: {e}")
+                    # 发生错误（如 Redis 连接断开），必须释放信号量
                     self.semaphore.release()
-                    continue
-
-                asyncio.create_task(self.process_task(msg_id, task,self.processor, self.semaphore))
-                
-            except Exception as e:
-                logger.error(f"主循环发生错误: {e}")
-                # 发生错误（如 Redis 连接断开），必须释放信号量
-                self.semaphore.release()
-                await asyncio.sleep(1)
+                    await asyncio.sleep(1)
 
 if __name__ == "__main__":
     # 独立运行时配置基本日志

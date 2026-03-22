@@ -1,94 +1,223 @@
 from pydantic import BaseModel
+from enum import IntEnum
+
+class Language(IntEnum):
+    C99 = 0
+    C11 = 1
+    C17 = 2
+    C23 = 3
+    CPP11 = 4
+    CPP14 = 5
+    CPP17 = 6
+    CPP20 = 7
+    CPP23 = 8
+    JAVA = 9
+    GO = 10
+    RUST = 11
+    PYTHON3 = 12
+    NODEJS = 13
+    CHECKER = 666
 
 class LanguageConfig(BaseModel):
     name: str
     src_name: str
     exe_name: str
-    compile_cmd: str | None = None
-    run_cmd: str
     compile_args: list[str] | None = None
-    run_args: list[str] | None = None
-    env: list[str] = ["LANG=en_US.UTF-8", "LANGUAGE=en_US:en", "LC_ALL=en_US.UTF-8"]
+    run_args: list[str]
+    env: list[str]
     
-    # Compilation Resource Limits
-    # GoJudge uses nanoseconds for time and bytes for memory
-    compile_cpu_time: int = 20 * 1000 * 1000 * 1000  # 10s default
-    compile_memory: int = 512 * 1024 * 1024          # 512MB default
-    compile_output_limit: int = 10 * 1024 * 1024     # 10MB log limit
-
-# 0=C, 1=C++, 2=Pascal, 3=Java, 4=Ruby, 5=Bash, 6=Python, 7=PHP, 8=Perl, 9=C#, 10=ObjC, 11=FreeBasic, 12=Scheme
-# Supported: C(0), C++(1), Java(3), Python(6)
+    compile_cpu_time: int
+    compile_memory: int
 
 LANG_CONFIGS: dict[int, LanguageConfig] = {
-    0: LanguageConfig(
-        name="c",
+    Language.C99: LanguageConfig(
+        name="c99",
         src_name="main.c",
         exe_name="main",
-        compile_cmd="/usr/bin/gcc",
         compile_args=[
             "gcc", "main.c", "-o", "main",
             "-O2", "-w", "-fmax-errors=3", "-std=c99", "-lm"
         ],
         env=["PATH=/usr/bin:/bin"],
-        run_cmd="main",
-        run_args=["main"],
-        compile_cpu_time=3 * 1000 * 1000 * 1000, # 3s for C
-        compile_memory=256 * 1024 * 1024         # 256MB
+        run_args=["./main"],
+        compile_cpu_time=3 * 1000 * 1000 * 1000,
+        compile_memory=256 * 1024 * 1024
     ),
-    1: LanguageConfig(
-        name="cpp",
+    Language.C11: LanguageConfig(
+        name="c11",
+        src_name="main.c",
+        exe_name="main",
+        compile_args=[
+            "gcc", "main.c", "-o", "main",
+            "-O2", "-w", "-fmax-errors=3", "-std=c11", "-lm"
+        ],
+        env=["PATH=/usr/bin:/bin"],
+        run_args=["./main"],
+        compile_cpu_time=3 * 1000 * 1000 * 1000,
+        compile_memory=256 * 1024 * 1024
+    ),
+    Language.C17: LanguageConfig(
+        name="c17",
+        src_name="main.c",
+        exe_name="main",
+        compile_args=[
+            "gcc", "main.c", "-o", "main",
+            "-O2", "-w", "-fmax-errors=3", "-std=c17", "-lm"
+        ],
+        env=["PATH=/usr/bin:/bin"],
+        run_args=["./main"],
+        compile_cpu_time=3 * 1000 * 1000 * 1000,
+        compile_memory=256 * 1024 * 1024
+    ),
+    Language.C23: LanguageConfig(
+        name="c23",
+        src_name="main.c",
+        exe_name="main",
+        compile_args=[
+            "gcc", "main.c", "-o", "main",
+            "-O2", "-w", "-fmax-errors=3", "-std=c23", "-lm"
+        ],
+        env=["PATH=/usr/bin:/bin"],
+        run_args=["./main"],
+        compile_cpu_time=3 * 1000 * 1000 * 1000,
+        compile_memory=256 * 1024 * 1024
+    ),
+    Language.CPP11: LanguageConfig(
+        name="cpp11",
         src_name="main.cpp",
         exe_name="main",
-        compile_cmd="/usr/bin/g++",
+        compile_args=[
+            "g++", "main.cpp", "-o", "main",
+            "-O2", "-w", "-fmax-errors=3", "-std=c++11", "-lm"
+        ],
+        env=["PATH=/usr/bin:/bin"],
+        run_args=["./main"],
+        compile_cpu_time=10 * 1000 * 1000 * 1000,
+        compile_memory=512 * 1024 * 1024,
+    ),
+    Language.CPP14: LanguageConfig(
+        name="cpp14",
+        src_name="main.cpp",
+        exe_name="main",
         compile_args=[
             "g++", "main.cpp", "-o", "main",
             "-O2", "-w", "-fmax-errors=3", "-std=c++14", "-lm"
         ],
         env=["PATH=/usr/bin:/bin"],
-        run_cmd="main",
-        run_args=["main"],
-        compile_cpu_time=10 * 1000 * 1000 * 1000, # 10s for C++ (templates can be slow)
-        compile_memory=512 * 1024 * 1024,          # 512MB
+        run_args=["./main"],
+        compile_cpu_time=10 * 1000 * 1000 * 1000,
+        compile_memory=512 * 1024 * 1024,
     ),
-    3: LanguageConfig(
+    Language.CPP17: LanguageConfig(
+        name="cpp17",
+        src_name="main.cpp",
+        exe_name="main",
+        compile_args=[
+            "g++", "main.cpp", "-o", "main",
+            "-O2", "-w", "-fmax-errors=3", "-std=c++17", "-lm"
+        ],
+        env=["PATH=/usr/bin:/bin"],
+        run_args=["./main"],
+        compile_cpu_time=10 * 1000 * 1000 * 1000,
+        compile_memory=512 * 1024 * 1024,
+    ),
+    Language.CPP20: LanguageConfig(
+        name="cpp20",
+        src_name="main.cpp",
+        exe_name="main",
+        compile_args=[
+            "g++", "main.cpp", "-o", "main",
+            "-O2", "-w", "-fmax-errors=3", "-std=c++20", "-lm"
+        ],
+        env=["PATH=/usr/bin:/bin"],
+        run_args=["./main"],
+        compile_cpu_time=10 * 1000 * 1000 * 1000,
+        compile_memory=512 * 1024 * 1024,
+    ),
+    Language.CPP23: LanguageConfig(
+        name="cpp23",
+        src_name="main.cpp",
+        exe_name="main",
+        compile_args=[
+            "g++", "main.cpp", "-o", "main",
+            "-O2", "-w", "-fmax-errors=3", "-std=c++23", "-lm"
+        ],
+        env=["PATH=/usr/bin:/bin"],
+        run_args=["./main"],
+        compile_cpu_time=10 * 1000 * 1000 * 1000,
+        compile_memory=512 * 1024 * 1024,
+    ),
+    Language.JAVA: LanguageConfig(
         name="java",
         src_name="Main.java",
-        exe_name="Main.jar",
-        compile_cmd="/usr/bin/javac",
+        exe_name="Main",
         compile_args=[
-            "javac", "{src_path}", "-d", ".", "-encoding", "UTF8"
+            "javac", "Main.java", "-d", ".", "-encoding", "UTF8"
         ],
-        run_cmd="/usr/bin/java",
         run_args=[
-            "java", "-cp", ".", "-XX:MaxRAM={max_memory}k", 
+            "java", "-cp", ".", 
             "-Djava.security.manager", "-Dfile.encoding=UTF-8", 
             "-Djava.awt.headless=true", "Main"
         ],
-        compile_cpu_time=15 * 1000 * 1000 * 1000, # 15s for Java
-        compile_memory=1024 * 1024 * 1024         # 1GB for JVM
+        env=["PATH=/usr/bin:/bin", "JAVA_HOME=/usr/lib/jvm/default-java"],
+        compile_cpu_time=15 * 1000 * 1000 * 1000,
+        compile_memory=1024 * 1024 * 1024
     ),
-    6: LanguageConfig(
-        name="python",
-        src_name="solution.py",
-        exe_name="__pycache__/solution.cpython-312.pyc",
-        compile_cmd="/usr/bin/python3",
+    Language.GO: LanguageConfig(
+        name="go",
+        src_name="main.go",
+        exe_name="main",
         compile_args=[
-            "python3", "-m", "py_compile", "{src_path}"
+            "go", "build", "-o", "main", "main.go"
         ],
-        run_cmd="/usr/bin/python3",
-        run_args=["python3", "{src_path}"],
-        env=["PYTHONIOENCODING=UTF-8", "LANG=en_US.UTF-8", "LANGUAGE=en_US:en", "LC_ALL=en_US.UTF-8"],
-        compile_cpu_time=5 * 1000 * 1000 * 1000, # 5s for py_compile
-        compile_memory=256 * 1024 * 1024
+        env=["PATH=/usr/local/go/bin:/usr/bin:/bin", "GOPATH=/tmp/go", "GOCACHE=/tmp/go-cache"],
+        run_args=["./main"],
+        compile_cpu_time=15 * 1000 * 1000 * 1000,
+        compile_memory=512 * 1024 * 1024
     ),
-    666:LanguageConfig(
+    Language.RUST: LanguageConfig(
+        name="rust",
+        src_name="main.rs",
+        exe_name="main",
+        compile_args=[
+            "rustc", "-O", "-o", "main", "main.rs"
+        ],
+        env=["PATH=/usr/local/cargo/bin:/usr/bin:/bin"],
+        run_args=["./main"],
+        compile_cpu_time=20 * 1000 * 1000 * 1000,
+        compile_memory=1024 * 1024 * 1024
+    ),
+    Language.PYTHON3: LanguageConfig(
+        name="python3",
+        src_name="solution.py",
+        exe_name="solution.py",
+        compile_args=None,
+        run_args=["python3", "solution.py"],
+        env=["PYTHONIOENCODING=UTF-8", "PATH=/usr/bin:/bin"],
+        compile_cpu_time=1 * 1000 * 1000 * 1000,
+        compile_memory=128 * 1024 * 1024
+    ),
+    Language.NODEJS: LanguageConfig(
+        name="nodejs",
+        src_name="solution.js",
+        exe_name="solution.js",
+        compile_args=None,
+        run_args=["node", "solution.js"],
+        env=["PATH=/usr/bin:/bin", "NODE_OPTIONS=--max-old-space-size=256"],
+        compile_cpu_time=1 * 1000 * 1000 * 1000,
+        compile_memory=128 * 1024 * 1024
+    ),
+    Language.CHECKER: LanguageConfig(
         name="checker",
         src_name="checker.cpp",
         exe_name="checker",
-        run_cmd="./checker",
-        run_args=["./checker","/dev/stdin","{ans}","2"],
-        compile_cpu_time=3*1000*1000*1000,#实际为checker运行的时间限制而不是compile的时间
-        compile_memory=512*1024*1024,
+        compile_args=[
+            "g++", "checker.cpp", "-o", "checker",
+            "-O2", "-static", "-std=c++17"
+        ],
+        run_args=["./checker", "input.in", "output.out", "2"],
+        compile_cpu_time=5 * 1000 * 1000 * 1000,
+        compile_memory=512 * 1024 * 1024,
         env=["PATH=/usr/bin:/bin"],
     )
 }

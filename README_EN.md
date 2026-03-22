@@ -1,4 +1,4 @@
-# JudgeWorker
+# XY-JudgeCore
 
 A high-performance asynchronous judging worker based on Redis Stream and go-judge.
 
@@ -106,7 +106,7 @@ Test data proves highly stable results:
 {
   "task": {
     "solution_id": 1,
-    "language": 1,
+    "language": 5,
     "src": "#include...",
     "max_cpu_time": 1000,
     "max_memory": 256,
@@ -158,7 +158,7 @@ r = redis.Redis()
 # Submit judging task
 task = {
     "solution_id": 1,
-    "language": 1,  # C++
+    "language": 5,  # C++14
     "src": "#include <iostream>\nint main() { std::cout << 'Hello'; }",
     "max_cpu_time": 1000,
     "max_memory": 256,
@@ -196,12 +196,22 @@ judgeworker/
 
 ## Supported Languages
 
-| ID | Language | Compiler    | Compile Limit | Memory Limit |
-| -- | -------- | ----------- | ------------- | ------------ |
-| 0  | C        | gcc (C99)   | 3s            | 256MB        |
-| 1  | C++      | g++ (C++14) | 10s           | 512MB        |
-| 3  | Java     | javac       | 15s           | 1GB          |
-| 6  | Python   | python3     | 5s            | 256MB        |
+| ID | Language | Compiler/Interpreter | Compile Limit | Memory Limit |
+| -- | -------- | -------------------- | ------------- | ------------ |
+| 0  | C99      | gcc                  | 3s            | 256MB        |
+| 1  | C11      | gcc                  | 3s            | 256MB        |
+| 2  | C17      | gcc                  | 3s            | 256MB        |
+| 3  | C23      | gcc                  | 3s            | 256MB        |
+| 4  | C++11    | g++                  | 10s           | 512MB        |
+| 5  | C++14    | g++                  | 10s           | 512MB        |
+| 6  | C++17    | g++                  | 10s           | 512MB        |
+| 7  | C++20    | g++                  | 10s           | 512MB        |
+| 8  | C++23    | g++                  | 10s           | 512MB        |
+| 9  | Java     | javac                | 15s           | 1GB          |
+| 10 | Go       | go build             | 15s           | 512MB        |
+| 11 | Rust     | rustc                | 20s           | 1GB          |
+| 12 | Python3  | python3              | -             | 128MB        |
+| 13 | NodeJS   | node                 | -             | 128MB        |
 
 ***
 
@@ -264,3 +274,9 @@ python -m judgeworker.worker
 MIT License
 
 Copyright (c) 2026 响滩
+
+***
+
+## Acknowledgements
+
+This project is built on [go-judge](https://github.com/criyle/go-judge) sandbox engine. Many thanks to the author for this excellent open-source project.
