@@ -3,6 +3,7 @@ pydantic==2.12.5
 pydantic-settings==2.12.0
 redis==7.1.0
 httpx[http2]==0.28.1
+cachetools==5.5.2
 
 # Test dependencies
 pytest==8.3.4
