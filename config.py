@@ -45,6 +45,10 @@ class Settings(BaseSettings):
         default="http://localhost:5050",
         validation_alias="GOJUDGE_URL"
     )
+    checker_cache_size : int = Field(
+        default=3000,
+        validation_alias="CHECKER_CACHE_SIZE"
+    )
     @property
     def test_case_dir(self)->str:
         return self.tmp_test_case_dir_ if self.testing else self.test_case_dir_

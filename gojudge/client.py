@@ -87,7 +87,16 @@ class TaskContext:
         file_ID = data["fileId"]
         self.cached_file_ids.append(file_ID)
         return file_ID
-    
+    async def delete_file(self,file_id:str)->bool:
+        try:
+            res = await self.client._client.delete(f"/file/{file_id}")
+            if res.status_code not in(200,404):
+                logger.warning(f"文件:{file_id}清理失败,http_code:{res.status_code},响应:{res}")
+                return False
+        except Exception as e:
+            logger.warning(f"文件:{file_id}清理失败,异常信息:{e}")
+            return False
+        return True
     async def run_task(self,request:Request)->list[Result]:
         payload = request.model_dump(by_alias=True,exclude_none=True)#预先序列化,考虑是否excludedefault
         logger.debug(f"{payload}")
@@ -98,6 +107,10 @@ class TaskContext:
     async def register_file(self,file_id:str):
         if file_id not in self.cached_file_ids:
             self.cached_file_ids.append(file_id)
+            
+    async def unregister_file(self,file_id:str):
+        self.cached_file_ids = [x for x in self.cached_file_ids if x!=file_id]
+
     async def cleanup(self):
         if not self.cached_file_ids:
             return

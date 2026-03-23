@@ -2,7 +2,7 @@ from redis_client import redis_client
 import logging
 import socket
 from config import settings
-from pydantic import BaseModel
+from pydantic import BaseModel,Field
 from languages import Language
 import time
 #如果使用docker需要处理proc的挂载，只读挂载
@@ -25,8 +25,8 @@ class JudgeTask(BaseModel):
     solution_id: int
     language: Language
     src: str
-    max_cpu_time: int  # 毫秒
-    max_memory: int  # mb 
+    max_cpu_time: int =Field(ge=1,le=15*1000) # 毫秒
+    max_memory: int =Field(ge=1,le=2*1024) # mb 
     problem_id: int
     output: bool
     is_spj: bool
