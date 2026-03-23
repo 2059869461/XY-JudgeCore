@@ -74,7 +74,7 @@ jobs:
         GOJUDGE_URL: http://localhost:5050
         TMP_TEST_CASE_DIR: /tmp/judgeworker_test_cases
       run: |
-        pytest tests/boundary/test_judge_status.py::test_judge_ac -v -s || touch .test_failed
+        pytest tests/ -v -s || touch .test_failed
 
         echo "==================== [全量日志开始] ===================="
 
