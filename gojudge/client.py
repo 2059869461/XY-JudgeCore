@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import httpx
 import logging
-from .schemas import *
+from gojudge.schemas import *
 # from task import JudgeTask
 from contextlib import asynccontextmanager
 from typing import Any

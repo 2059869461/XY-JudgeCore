@@ -1,0 +1,96 @@
+name: JudgeWorker CI
+
+on:
+  push:
+    branches: [ main, master, dev ]
+  pull_request:
+    branches: [ main, master, dev ]
+
+jobs:
+  judge-worker-tests:
+    name: Run JudgeWorker Tests
+    runs-on: ubuntu-22.04
+
+    services:
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: --health-cmd="redis-cli ping" --health-interval=10s --health-timeout=5s --health-retries=3
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Set up Python 3.12
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+
+    - name: Install System Deps
+      run: |
+        sudo sed -i 's/archive.ubuntu.com/mirrors.aliyun.com/g' /etc/apt/sources.list
+        sudo sed -i 's/security.ubuntu.com/mirrors.aliyun.com/g' /etc/apt/sources.list
+        sudo apt-get update
+        sudo apt-get install -y libseccomp-dev netcat wget ca-certificates
+        sudo update-ca-certificates
+
+    - name: Install Python Deps
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Start Go-Judge
+      run: |
+        wget --no-check-certificate -O go-judge.tar.gz https://github.com/criyle/go-judge/releases/download/v1.11.3/go-judge_1.11.3_linux_amd64v2.tar.gz || \
+        curl -k -L -o go-judge.tar.gz https://github.com/criyle/go-judge/releases/download/v1.11.3/go-judge_1.11.3_linux_amd64v2.tar.gz
+        tar -xzf go-judge.tar.gz
+
+        mkdir -p gojudge
+        mv go-judge gojudge/
+        chmod +x gojudge/go-judge
+
+        ls -l gojudge/
+
+        cd gojudge && sudo nohup ./go-judge -http-addr 0.0.0.0:5050 > go-judge.log 2>&1 &
+
+        timeout 15s bash -c 'until nc -z localhost 5050; do sleep 1; done' || (cat gojudge/go-judge.log && exit 1)
+
+    - name: Start Worker
+      env:
+        TESTING: "true"
+        REDIS_URL: redis://127.0.0.1:6379
+        GOJUDGE_URL: http://localhost:5050
+        TMP_TEST_CASE_DIR: /tmp/judgeworker_test_cases
+      run: |
+        mkdir -p /tmp/judgeworker_test_cases
+        nohup python -m worker > worker.log 2>&1 &
+        sleep 5
+
+    - name: Run Pytest
+      env:
+        TESTING: "true"
+        REDIS_URL: redis://127.0.0.1:6379
+        GOJUDGE_URL: http://localhost:5050
+        TMP_TEST_CASE_DIR: /tmp/judgeworker_test_cases
+      run: |
+        pytest tests/ -v -s || touch .test_failed
+
+        echo "==================== [全量日志开始] ===================="
+
+        echo ">>> [WORKER FULL LOG] <<<"
+        [ -f worker.log ] && cat worker.log || echo "worker.log 不存在"
+
+        echo ">>> [GO-JUDGE FULL LOG] <<<"
+        [ -f gojudge/go-judge.log ] && cat gojudge/go-judge.log || echo "go-judge.log 不存在"
+
+        echo "==================== [全量日志结束] ===================="
+
+        [ -f .test_failed ] && exit 1 || exit 0
+
+    - name: Upload Logs
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: judgeworker-logs
+        path: "*.log"

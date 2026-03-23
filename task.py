@@ -1,9 +1,9 @@
-from .redis import redis_client
+from redis_client import redis_client
 import logging
 import socket
-from .config import settings
+from config import settings
 from pydantic import BaseModel
-from .languages import Language
+from languages import Language
 import time
 #如果使用docker需要处理proc的挂载，只读挂载
 #内核大于4.20 优先使用psi作为负载指标

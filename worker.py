@@ -1,14 +1,14 @@
-from .redis import redis_client
+from redis_client import redis_client
 import asyncio
 import logging
 import socket
-from .config import settings
-from .resource import ResourceManager
-from .task import JudgeTask,TaskFetcher
-from .processor import TaskProcessor
-from .gojudge.client import GoJudgeClient
-from .gojudge.client import SandboxErrorBase
-from .checker import  CheckerManager,CheckerCompileError
+from config import settings
+from resource_manager import ResourceManager
+from task import JudgeTask,TaskFetcher
+from processor import TaskProcessor
+from gojudge.client import GoJudgeClient
+from gojudge.client import SandboxErrorBase
+from checker import  CheckerManager,CheckerCompileError
 #如果使用docker需要处理proc的挂载，只读挂载
 #内核大于4.20 优先使用psi作为负载指标
 # 配置日志

@@ -1,6 +1,6 @@
 import logging
 import asyncio
-from .config import settings
+from config import settings
 
 MAX_SERVER_CPU = settings.judge_worker_max_server_cpu
 MAX_SERVER_MEMORY = settings.judge_worker_max_server_memory

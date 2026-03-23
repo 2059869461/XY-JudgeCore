@@ -1,9 +1,9 @@
 from __future__ import annotations
-from .gojudge.client import GoJudgeClient,TaskContext
-from .languages import Language
+from gojudge.client import GoJudgeClient,TaskContext
+from languages import Language
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from .processor import TaskProcessor
+    from processor import TaskProcessor
 
 class CheckerCompileError(Exception):
     def __init__(self, message,problem_id:int|None=None) -> None:

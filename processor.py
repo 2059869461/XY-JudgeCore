@@ -3,18 +3,18 @@ import logging
 import asyncio
 from pathlib import Path
 
-from .gojudge.client import GoJudgeClient, TaskContext
-from .gojudge.schemas import *
-from .languages import get_language_config,Language
-from .task import JudgeTask
-from .result import JudgeResult, JudgeStatus, CaseResult
+from  gojudge.client import GoJudgeClient, TaskContext
+from  gojudge.schemas import *
+from  languages import get_language_config,Language
+from  task import JudgeTask
+from  result import JudgeResult, JudgeStatus, CaseResult
 import json
-from .gojudge.client import SandboxErrorBase
-from .config import settings
-from .checker import CheckerCompileError
+from  gojudge.client import SandboxErrorBase
+from  config import settings
+from  checker import CheckerCompileError
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from .checker import CheckerManager
+    from checker import CheckerManager
 logger = logging.getLogger(__name__)
 """
 需要实现 1.checker提前编译缓存在gojudge内部，这个应该由worker初始化的时候负责，获得文件ID,另外可考虑编译好后直接挂载入gojudge
@@ -279,7 +279,7 @@ class TaskProcessor:
         except InvalidLanguage as e:
             logger.error(f"处理提交:{task.solution_id}过程出错:{e}")
         except FileNotFoundError:
-            logger.error(f"处理提交:{task.solution_id}过程出错:找不到配置文件: {settings.test_case_dir}{task.problem_id}/info.json")
+            logger.error(f"处理提交:{task.solution_id}过程出错:找不到配置文件: {settings.test_case_dir}/{task.problem_id}/info.json")
         except json.JSONDecodeError:
             logger.error(f"处理提交:{task.solution_id}过程出错:JSON格式错误，无法解析: {settings.test_case_dir}/{task.problem_id}/info.json")
         except PermissionError:
