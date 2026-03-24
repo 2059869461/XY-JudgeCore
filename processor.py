@@ -98,8 +98,16 @@ class TaskProcessor:
         """
         内部错误提前退出 （比如文件打开失败），也会提前关闭 pipe，这种情况下用户进程同样可能收到 SIGPIPE，但这与 WA 逻辑无关。
         """
-        logger.info(run_result.model_dump_json())
-        logger.info(checker_result.model_dump_json())
+        logger.debug(run_result.model_dump_json())
+        logger.debug(checker_result.model_dump_json())
+        #发生FileError,抛出异常,上层会走沙箱恢复的路径,尽可能的尝试修复问题,但目前针对题目配置错误的异常,比如缺失测试点的,处理还是欠妥
+        if checker_result.status == Status.FileError :
+            raise SandboxRunError(f"Checker FileError,checker运行结果:{checker_result.model_dump_json()}")
+        if run_result.status == Status.FileError:
+            raise SandboxRunError(f"用户代码 FileError:{run_result.model_dump_json()}")
+        if run_result.status == Status.InternalError or checker_result.status == Status.InternalError:
+            raise SandboxRunError(f"沙箱内部错误InternalError:用户代码运行结果:{run_result.model_dump_json()},checker 运行结果:{checker_result.model_dump_json()}")
+        
         status = JudgeStatus.SYSTEM_ERROR
         if run_result.status == Status.TimeLimitExceeded:
             status = JudgeStatus.TIME_LIMIT_EXCEEDED
@@ -133,10 +141,7 @@ class TaskProcessor:
                 raise SandboxRunError(f"checker内部错误:用户代码运行结果:{run_result.model_dump_json()},checker运行结果:{checker_result.model_dump_json()}")
             else:
                 raise SandboxRunError(f"checker内部错误:{checker_result.model_dump_json()}")
-        elif run_result.status == Status.FileError:
-            raise SandboxRunError(f"沙箱内部File Error:{run_result.model_dump_json()}")
-        elif run_result.status == Status.InternalError:
-            raise SandboxRunError(f"沙箱内部错误InternalError:{run_result.model_dump_json()}")
+        
         else:
             raise SandboxRunError("沙箱File Error或 Sandbox Internal Error")
         return CaseResult(

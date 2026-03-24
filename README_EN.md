@@ -36,7 +36,6 @@ JudgeWorker runs as an independent service, fully decoupled from the business sy
 - **Auto Failover**: XAUTOCLAIM allows other workers to take over timed-out tasks
 
 This means:
-
 - Backend can be developed in any language (Python/Go/Java/Node.js...)
 - Add or remove workers anytime without modifying backend code
 - Backend upgrades don't affect judging service, and vice versa
@@ -76,6 +75,7 @@ Container-level isolation based on go-judge:
 - **Resource Limits**: CPU time, memory, process count, output size
 - **File Isolation**: Each judgment uses an isolated container
 - **Pipe Direct**: User program output pipes directly to Checker
+- **Smart Cache Management**: Checker artifacts cached in sandbox, automatically validated and cleaned after sandbox recovery to avoid stale cache usage
 
 ### 6. High-Performance Answer Comparison
 
@@ -96,6 +96,13 @@ Test data proves highly stable results:
 | Medium        | 191.10        | ±6.55         | 10.4 MB    |
 | High          | 191.39        | ±7.80         | 10.4 MB    |
 
+### 8. Smart Caching and Exception Handling
+
+- **Checker Lazy-Loading Cache**: First compilation cached in sandbox, reused in subsequent judgments to avoid recompilation overhead
+- **Cache Validation**: Validates cache validity via `GET /file` after sandbox recovery, automatically cleans stale fileIds
+- **LRU Eviction**: SPJ Checker cache uses LRU mechanism to prevent unlimited growth
+- **Fine-grained Exception Handling**: Distinguishes parameter validation errors from JSON parse errors for more accurate error messages
+
 ***
 
 ## Quick Integration
@@ -105,7 +112,7 @@ Test data proves highly stable results:
 ```json
 {
   "task": {
-    "solution_id": 1,
+    "solution_id":1,
     "language": 5,
     "src": "#include...",
     "max_cpu_time": 1000,
@@ -144,7 +151,6 @@ Test data proves highly stable results:
 - **ACM/ICPC**: Pass/fail based on final result
 - **OI Format**: Partial scores via `pass_rate` (e.g., 7500 = 75% passed)
 - **IOI Format**: Individual test case scores via `result_list`
-
   <br />
 
 ### Backend Integration Example
@@ -157,7 +163,7 @@ r = redis.Redis()
 
 # Submit judging task
 task = {
-    "solution_id": 1,
+    "solution_id":1,
     "language": 5,  # C++14
     "src": "#include <iostream>\nint main() { std::cout << 'Hello'; }",
     "max_cpu_time": 1000,
@@ -168,7 +174,6 @@ task = {
     "ignore_space": False
 }
 r.xadd("judge:tasks", {"task": json.dumps(task)})
-
 # Read judging result
 results = r.xread({"judge:results": "0"}, count=1, block=10000)
 ```
@@ -182,11 +187,11 @@ judgeworker/
 ├── worker.py        # Main loop, coordinates components
 ├── task.py          # Task fetching (PEL recovery/new tasks/timeout claim)
 ├── processor.py     # Task processing (compile/run/parse results)
-├── resource.py      # Resource monitoring (PSI priority/legacy fallback)
+├── resource_manager.py      # Resource monitoring (PSI priority/legacy fallback)
 ├── config.py        # Configuration management
 ├── languages.py     # Language configs
 ├── result.py        # Result definitions
-├── checker.cpp      # Answer comparator
+├── checker.py       # Checker manager
 └── gojudge/
     ├── client.py    # Sandbox communication client
     └── schemas.py   # API data models

@@ -76,6 +76,7 @@ JudgeWorker 作为独立服务运行，与业务系统完全解耦：
 - **资源限制**：CPU 时间、内存、进程数、输出大小全方位限制
 - **文件隔离**：每次判题使用独立容器，自动清理缓存文件
 - **Pipe 直连**：用户程序输出直接 pipe 到 Checker，高效比对
+- **智能缓存管理**：Checker 编译产物缓存在沙箱内，沙箱恢复后自动验证并清理失效的 fileId，避免使用过期缓存
 
 ### 六、高性能答案比对
 
@@ -96,6 +97,13 @@ JudgeWorker 作为独立服务运行，与业务系统完全解耦：
 | 中负载  | 191.10 | ±6.55  | 10.4 MB |
 | 高负载  | 191.39 | ±7.80  | 10.4 MB |
 
+### 八、智能缓存与异常处理
+
+- **Checker 懒加载缓存**：首次编译后缓存在沙箱内，后续判题直接复用，避免重复编译开销
+- **缓存验证机制**：沙箱恢复后自动验证缓存有效性，清理失效的 fileId，确保缓存一致性
+- **LRU 淘汰策略**：SPJ Checker 缓存采用 LRU 机制，防止缓存无限增长
+- **精细异常处理**：区分参数校验失败和 JSON 解析错误，提供更准确的错误信息
+
 ***
 
 ## 快速集成
@@ -105,7 +113,7 @@ JudgeWorker 作为独立服务运行，与业务系统完全解耦：
 ```json
 {
   "task": {
-    "solution_id": 1,
+    "solution_id":1,
     "language": 5,
     "src": "#include...",
     "max_cpu_time": 1000,
@@ -155,7 +163,7 @@ r = redis.Redis()
 
 # 提交判题任务
 task = {
-    "solution_id": 1,
+    "solution_id":1,
     "language": 5,  # C++14
     "src": "#include <iostream>\nint main() { std::cout << 'Hello'; }",
     "max_cpu_time": 1000,
@@ -166,7 +174,6 @@ task = {
     "ignore_space": False
 }
 r.xadd("judge:tasks", {"task": json.dumps(task)})
-
 # 读取判题结果
 results = r.xread({"judge:results": "0"}, count=1, block=10000)
 ```
@@ -180,11 +187,11 @@ judgeworker/
 ├── worker.py        # 主循环，协调各组件
 ├── task.py          # 任务获取（PEL恢复/新任务/超时接管）
 ├── processor.py     # 任务处理（编译/运行/结果解析）
-├── resource.py      # 资源监控（PSI优先/传统降级）
+├── resource_manager.py      # 资源监控（PSI优先/传统降级）
 ├── config.py        # 配置管理
 ├── languages.py     # 语言配置
 ├── result.py        # 结果定义
-├── checker.cpp      # 答案比对器
+├── checker.py       # Checker 管理器
 └── gojudge/
     ├── client.py    # 沙箱通信客户端
     └── schemas.py   # API 数据模型
