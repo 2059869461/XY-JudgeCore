@@ -90,7 +90,7 @@ class TaskProcessor:
         file_id = result.fileIds.get(language_config.exe_name)#需要修改
         if  not file_id:
             raise SandboxRunError("未找到编译后的文件id")
-        await ctx.register_file(file_id)
+        ctx.register_file(file_id)
         return True,file_id
 
         

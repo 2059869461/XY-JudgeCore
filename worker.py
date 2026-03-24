@@ -97,6 +97,7 @@ class JudgeWorker:
             while self.running:
                 if not self.sandbox_ok:
                     await self.wait_for_sandbox()
+                    await self.checker_manager.remove_invalid_ids() #沙箱恢复后移除无效的id
                 # 1. 信号量先行 (The Gatekeeper)，必须获取信号量之后才会进行，如果没有就挂起不占用资源
                 await self.semaphore.acquire()
 

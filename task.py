@@ -2,7 +2,7 @@ from redis_client import redis_client
 import logging
 import socket
 from config import settings
-from pydantic import BaseModel,Field
+from pydantic import BaseModel,Field,ValidationError
 from languages import Language
 import time
 #如果使用docker需要处理proc的挂载，只读挂载
@@ -71,19 +71,22 @@ class TaskFetcher:
         try:
             task = JudgeTask.model_validate_json(raw_task)
             return task
+        except ValidationError as e:
+            logger.error(f"消息:{msg_id} 校验失败,请检查是否缺少参数或参数范围不合理,异常信息:{e}")
         except Exception as e:
             logger.error(f"消息{msg_id}json解析失败:{e}")
-            async with redis_client.pipeline() as pipe:
-                pipe.xadd(self.DLQ,{
-                    "origin_msg_id":msg_id,
-                    "origin_data":str(raw_task),
-                    "reason":f"JSON解析失败:{str(e)}",
-                    "worker":self.CONSUMER_NAME
-                })
-                pipe.xack(self.STREAM,self.GROUP,msg_id)
-                pipe.xdel(self.STREAM,msg_id)
-                await pipe.execute()
-            return None
+            
+        async with redis_client.pipeline() as pipe:
+            pipe.xadd(self.DLQ,{
+                "origin_msg_id":msg_id,
+                "origin_data":str(raw_task),
+                "reason":f"JSON解析失败:{str(e)}",
+                "worker":self.CONSUMER_NAME
+            })
+            pipe.xack(self.STREAM,self.GROUP,msg_id)
+            pipe.xdel(self.STREAM,msg_id)
+            await pipe.execute()
+        return None
 
     async def _fetch_from_pel(self)->tuple[str,JudgeTask]|tuple[None,None]:
         """

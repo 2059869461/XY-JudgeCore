@@ -79,17 +79,18 @@ class TaskContext:
     #需要增加编译后可执行文件的清理
     def __init__(self,client:GoJudgeClient) -> None:
         self.client = client
-        self.cached_file_ids : list[str] = []
+        self.cached_file_ids : set[str] = set()
     
     async def upload_file(self,name:str,content:str)->str:
         files = {"file":(name,content)}
-        data = await self.client.request("POST","/file",files=files)
-        file_ID = data["fileId"]
-        self.cached_file_ids.append(file_ID)
-        return file_ID
+        file_id = await self.client.request("POST","/file",files=files)
+        self.cached_file_ids.add(file_id)
+        return file_id
+    
     async def delete_file(self,file_id:str)->bool:
         try:
             res = await self.client._client.delete(f"/file/{file_id}")
+            self.unregister_file(file_id)
             if res.status_code not in(200,404):
                 logger.warning(f"文件:{file_id}清理失败,http_code:{res.status_code},响应:{res}")
                 return False
@@ -104,27 +105,26 @@ class TaskContext:
             data = await self.client.request("POST","/run",json=payload)
             return [Result.model_validate(item) for item in data]
         
-    async def register_file(self,file_id:str):
-        if file_id not in self.cached_file_ids:
-            self.cached_file_ids.append(file_id)
+    def register_file(self,file_id:str):
+        self.cached_file_ids.add(file_id)
             
-    async def unregister_file(self,file_id:str):
-        self.cached_file_ids = [x for x in self.cached_file_ids if x!=file_id]
+    def unregister_file(self,file_id:str):
+        self.cached_file_ids.discard(file_id)
 
     async def cleanup(self):
         if not self.cached_file_ids:
             return
-        
+        file_id_list = list(self.cached_file_ids)
         tasks = [
             self.client._client.delete(f"/file/{file_id}")
-            for file_id in self.cached_file_ids
+            for file_id in file_id_list
         ]
         results = await asyncio.gather(*tasks,return_exceptions=True)
         for i,res in enumerate(results):
             if isinstance(res,Exception):
-                logger.warning(f"Failed to cleanup file {self.cached_file_ids[i]}: {res}")
+                logger.warning(f"Failed to cleanup file {file_id_list[i]}: {res}")
             elif isinstance(res,httpx.Response):
                 if res.status_code not in(200,404):
-                    logger.warning(f"Failed to cleanup file {self.cached_file_ids[i]}: Status {res.status_code}")
+                    logger.warning(f"Failed to cleanup file {file_id_list[i]}: Status {res.status_code}")
 
         self.cached_file_ids.clear()

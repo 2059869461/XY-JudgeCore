@@ -37,7 +37,7 @@ class CheckerManager():
         compile_ok,file_id = await self._processor.compile(language=language,src=src,ctx=self._ctx)
         if not compile_ok:
             raise CheckerCompileError(f"checker编译失败:{file_id}",problem_id=problem_id)
-        await self._ctx.register_file(file_id)
+        self._ctx.register_file(file_id)
         return file_id
 
         
@@ -57,10 +57,20 @@ class CheckerManager():
                 if len(self._spj_checkers) >= self._spj_checkers.maxsize:
                     old_key = next(iter(self._spj_checkers))
                     old_file_id = self._spj_checkers.pop(old_key)
-                    await self._ctx.unregister_file(old_file_id)
                     await self._ctx.delete_file(old_file_id)
 
                 file_id = await self._compile_checker(problem_id)
                 self._spj_checkers[problem_id] = file_id
                 return file_id
-                
+    
+    async def remove_invalid_ids(self):
+        data = await self.client.request("GET","/file")# 返回 dict {fileId: name}
+        sandbox_ids = set(data.keys())
+        if self._default_checker and self._default_checker not in sandbox_ids:
+            self._default_checker = None
+
+        for k in list(self._spj_checkers.keys()):
+            if self._spj_checkers[k] not in sandbox_ids:#集合查找复杂度O(1)
+                self._ctx.unregister_file(self._spj_checkers[k])
+                del self._spj_checkers[k]
+
