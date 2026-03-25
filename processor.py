@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from checker import CheckerManager
 logger = logging.getLogger(__name__)
 """
-需要实现 1.checker提前编译缓存在gojudge内部，这个应该由worker初始化的时候负责，获得文件ID,另外可考虑编译好后直接挂载入gojudge
+1.checker提前编译缓存在gojudge内部，这个应该由worker初始化的时候负责，获得文件ID,另外可考虑编译好后直接挂载入gojudge
 2. 解析task 尤其是语言映射成对应语言的配置，然后构造request 发送给gojudge，解析response，转换成JudgeResult，并返回入redis judge:results 流，后端收到后进行xack
 3. processor 需要实现利用GoJudgeClient与gojudge的交互，利用TaskContext自动管理缓存文件的生命期，将JudgeTask转换成request，控制测试点的并发问题
 JudgeTask -> GoJugdeRequest 
@@ -32,11 +32,12 @@ TODO:
     - 方案 A：如果需要展示，可以在 Checker 的 files 中对 stdin 开启 proxy: true （go-judge 特性），这样 go-judge 会帮你 copy 一份数据出来。
 - 方案 B：Checker 的 stderr 通常会打印 wrong answer expecting '3', found '4' ，这通常足够了。
 
-需要转为预编译checker,减少每次从磁盘启动的时间,考虑路径拼接问题,以及去除硬编码路径
 """
 class SandboxRunError(SandboxErrorBase):
     pass
 class InvalidLanguage(Exception):
+    pass
+class ProblemConfigError(Exception):
     pass
 class TaskProcessor:
     def __init__(self,client:GoJudgeClient,checker_manager:CheckerManager|None=None) -> None:
@@ -56,9 +57,7 @@ class TaskProcessor:
             language_config = get_language_config(language)
         except ValueError:
             raise InvalidLanguage(f"不支持的语言:{language}")
-        if language_config.compile_args is None: #非编译的语言直接上传文件然后返回
-            file_id  = await ctx.upload_file(name=language_config.exe_name,content=src)
-            return True,file_id
+      
         cmd = Cmd(
             args = language_config.compile_args,
             env = language_config.env,
@@ -93,17 +92,38 @@ class TaskProcessor:
         ctx.register_file(file_id)
         return True,file_id
 
-        
-    async def _parse_result(self,test_case_id:int,run_result:Result,checker_result:Result)->CaseResult:
+    async def _parse_result(self,test_case_path:str,test_case_id:int,run_result:Result,checker_result:Result)->CaseResult:
         """
         内部错误提前退出 （比如文件打开失败），也会提前关闭 pipe，这种情况下用户进程同样可能收到 SIGPIPE，但这与 WA 逻辑无关。
         """
         logger.debug(run_result.model_dump_json())
         logger.debug(checker_result.model_dump_json())
         #发生FileError,抛出异常,上层会走沙箱恢复的路径,尽可能的尝试修复问题,但目前针对题目配置错误的异常,比如缺失测试点的,处理还是欠妥
+
+        #用户代码的fileerror 因为无copyout ,所以出错就是两个方面,1 .in文件 2 用户代码的可执行文件
+        #如果后续增加了copyout需要同时处理copyout的异常
+        # 区分题目配置问题(不可重试) 和 可重试的缓存问题
+        #配置问题文件只有两个候选：
+        # 用户侧的 f"{test_case_id}.in"
+        # checker 侧的 f"{test_case_id}.out"
+        #其余文件python读取的时候会报filenotfounderror,也会在process处理
+        # 下面这些不算配置问题：
+        # checker
+        # 用户程序可执行文件 main / solution.py
+        # stdout/stderr/collector
+        target_name = {f"{test_case_id}.in",f"{test_case_id}.out"}
         if checker_result.status == Status.FileError :
+            if checker_result.fileError:
+                for err in checker_result.fileError:
+                    if err.type == FileErrorType.CopyInOpenFile and err.name in target_name:
+                        raise ProblemConfigError(f"判题过程中缺失文件/文件无法打开,请检查题目配置是否有问题,文件目录:{test_case_path}.out,错误类型:{err.type},详情信息:{err.message}\nchecker运行结果:{checker_result.model_dump_json()}")
             raise SandboxRunError(f"Checker FileError,checker运行结果:{checker_result.model_dump_json()}")
         if run_result.status == Status.FileError:
+            if run_result.fileError:
+                for err in run_result.fileError:
+                    if err.type == FileErrorType.CopyInOpenFile and err.name in target_name:
+                        raise ProblemConfigError(f"判题过程中缺失文件/文件无法打开,请检查题目配置是否有问题,文件目录:{test_case_path}.in,错误类型:{err.type},详情信息:{err.message}\n用户代码运行结果:{run_result.model_dump_json()}")
+
             raise SandboxRunError(f"用户代码 FileError:{run_result.model_dump_json()}")
         if run_result.status == Status.InternalError or checker_result.status == Status.InternalError:
             raise SandboxRunError(f"沙箱内部错误InternalError:用户代码运行结果:{run_result.model_dump_json()},checker 运行结果:{checker_result.model_dump_json()}")
@@ -213,7 +233,7 @@ class TaskProcessor:
         if run_result.error or checker_result.error:
             raise SandboxRunError(f"沙箱错误: 用户代码结果:{run_result.model_dump_json()};  checker运行结果:{checker_result.model_dump_json()}") 
         
-        return await self._parse_result(test_case_id,run_result,checker_result)
+        return await self._parse_result(test_case_path,test_case_id,run_result,checker_result)
 
     async def _get_testcase_config(self,problem_id:int):
         path = Path(settings.test_case_dir)/str(problem_id)/"info.json"
@@ -281,10 +301,13 @@ class TaskProcessor:
                     pass_rate=int(ac_cnt *10000 //case_cnt )if case_cnt>0 else 0
                 )
         #processor 只捕获无法重试的非沙箱异常，沙箱异常交给上层的process_task 协程处理
+        #checker 相关异常,如果是文件打不开filenoefound在此处处理，checker编译错误也在这处理,
+        #而兜底的fileerror,不在此处，交给上层重试,因为那很可能是短暂的缓存失效，重试可解决
+        #此处同时捕获题目配置异常,比如缺少.in .out info.json 这些都会在这处理
         except InvalidLanguage as e:
             logger.error(f"处理提交:{task.solution_id}过程出错:{e}")
-        except FileNotFoundError:
-            logger.error(f"处理提交:{task.solution_id}过程出错:找不到配置文件: {settings.test_case_dir}/{task.problem_id}/info.json")
+        except FileNotFoundError as e:
+            logger.error(f"处理提交:{task.solution_id}过程出错:找不到文件: {settings.test_case_dir}/{task.problem_id}/,异常信息:{e}")
         except json.JSONDecodeError:
             logger.error(f"处理提交:{task.solution_id}过程出错:JSON格式错误，无法解析: {settings.test_case_dir}/{task.problem_id}/info.json")
         except PermissionError:
@@ -294,7 +317,8 @@ class TaskProcessor:
                 logger.fatal(f"Checker 编译失败,无法进行判题,错误信息:{e}")
             else:
                 logger.error(f"题目:{e.problem_id}的spj checker编译失败,错误信息:{e}")#后续可考虑主动掠过该题目的task,直到恢复
-
+        except ProblemConfigError as e:
+            logger.fatal(f"题目配置出错无法进行判题,错误信息:{e}")
         return JudgeResult(
             solution_id=task.solution_id,
             problem_id=task.problem_id,

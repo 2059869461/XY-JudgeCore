@@ -33,11 +33,11 @@ class CheckerManager():
                 src = f.read()
         else:
             language = Language.CPP17
-            src = ""#需要读取spj的代码，暂时先掠过
+            with open("./spj.cpp","r") as f:
+                src = f.read() #需要引入版本管理
         compile_ok,file_id = await self._processor.compile(language=language,src=src,ctx=self._ctx)
         if not compile_ok:
             raise CheckerCompileError(f"checker编译失败:{file_id}",problem_id=problem_id)
-        self._ctx.register_file(file_id)
         return file_id
 
         

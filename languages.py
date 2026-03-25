@@ -16,13 +16,17 @@ class Language(IntEnum):
     RUST = 11
     PYTHON3 = 12
     NODEJS = 13
+    KOTLIN = 14
+    CSHARP = 15
+    PASCAL = 16
+    TYPESCRIPT = 17
     CHECKER = 666
 
 class LanguageConfig(BaseModel):
     name: str
     src_name: str
     exe_name: str
-    compile_args: list[str] | None = None
+    compile_args: list[str] 
     run_args: list[str]
     env: list[str]
     
@@ -191,21 +195,61 @@ LANG_CONFIGS: dict[int, LanguageConfig] = {
         name="python3",
         src_name="solution.py",
         exe_name="solution.py",
-        compile_args=None,
+        compile_args=["python3", "-m", "py_compile", "solution.py"],
         run_args=["python3", "solution.py"],
         env=["PYTHONIOENCODING=UTF-8", "PATH=/usr/bin:/bin"],
-        compile_cpu_time=1 * 1000 * 1000 * 1000,
-        compile_memory=128 * 1024 * 1024
+        compile_cpu_time=5 * 1000 * 1000 * 1000,
+        compile_memory=256 * 1024 * 1024
     ),
     Language.NODEJS: LanguageConfig(
         name="nodejs",
         src_name="solution.js",
         exe_name="solution.js",
-        compile_args=None,
+        compile_args=["node", "--check", "solution.js"],
         run_args=["node", "solution.js"],
         env=["PATH=/usr/bin:/bin", "NODE_OPTIONS=--max-old-space-size=256"],
-        compile_cpu_time=1 * 1000 * 1000 * 1000,
-        compile_memory=128 * 1024 * 1024
+        compile_cpu_time=5 * 1000 * 1000 * 1000,
+        compile_memory=256 * 1024 * 1024
+    ),
+    Language.KOTLIN: LanguageConfig(
+        name="kotlin",
+        src_name="Main.kt",
+        exe_name="Main.jar",
+        compile_args=["kotlinc", "Main.kt", "-include-runtime", "-d", "Main.jar"],
+        run_args=["java", "-jar", "Main.jar"],
+        env=["PATH=/usr/bin:/bin", "JAVA_HOME=/usr/lib/jvm/default-java"],
+        compile_cpu_time=20 * 1000 * 1000 * 1000,
+        compile_memory=1024 * 1024 * 1024
+    ),
+    Language.CSHARP: LanguageConfig(
+        name="csharp",
+        src_name="Main.cs",
+        exe_name="Main.exe",
+        compile_args=["mcs", "-optimize+", "-out:Main.exe", "Main.cs"],
+        run_args=["mono", "Main.exe"],
+        env=["PATH=/usr/bin:/bin"],
+        compile_cpu_time=15 * 1000 * 1000 * 1000,
+        compile_memory=512 * 1024 * 1024
+    ),
+    Language.PASCAL: LanguageConfig(
+        name="pascal",
+        src_name="main.pas",
+        exe_name="main",
+        compile_args=["fpc", "-O2", "-o main", "main.pas"],
+        run_args=["./main"],
+        env=["PATH=/usr/bin:/bin"],
+        compile_cpu_time=10 * 1000 * 1000 * 1000,
+        compile_memory=256 * 1024 * 1024
+    ),
+    Language.TYPESCRIPT: LanguageConfig(
+        name="typescript",
+        src_name="solution.ts",
+        exe_name="solution.js",
+        compile_args=["tsc", "--outDir", ".", "solution.ts"],
+        run_args=["node", "solution.js"],
+        env=["PATH=/usr/bin:/bin", "NODE_OPTIONS=--max-old-space-size=256"],
+        compile_cpu_time=10 * 1000 * 1000 * 1000,
+        compile_memory=512 * 1024 * 1024
     ),
     Language.CHECKER: LanguageConfig(
         name="checker",

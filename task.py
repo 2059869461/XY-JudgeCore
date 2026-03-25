@@ -72,15 +72,17 @@ class TaskFetcher:
             task = JudgeTask.model_validate_json(raw_task)
             return task
         except ValidationError as e:
+            e_msg = str(e)
             logger.error(f"消息:{msg_id} 校验失败,请检查是否缺少参数或参数范围不合理,异常信息:{e}")
         except Exception as e:
+            e_msg = str(e)
             logger.error(f"消息{msg_id}json解析失败:{e}")
             
         async with redis_client.pipeline() as pipe:
             pipe.xadd(self.DLQ,{
                 "origin_msg_id":msg_id,
                 "origin_data":str(raw_task),
-                "reason":f"JSON解析失败:{str(e)}",
+                "reason":f"JSON解析失败:{e_msg}",
                 "worker":self.CONSUMER_NAME
             })
             pipe.xack(self.STREAM,self.GROUP,msg_id)

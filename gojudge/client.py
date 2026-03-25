@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import logging
 from gojudge.schemas import *
-# from task import JudgeTask
+from config import settings
 from contextlib import asynccontextmanager
 from typing import Any
 import asyncio
@@ -24,7 +24,7 @@ class GoJudgeClient:
     def __init__(
         self, 
         compute_semaphore : asyncio.Semaphore,
-        base_url: str = "http://localhost:5050", 
+        base_url: str = settings.gojudge_url, 
         timeout: float = 60.0,
         max_connections: int = 100,
         

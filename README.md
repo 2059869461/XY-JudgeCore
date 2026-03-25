@@ -254,13 +254,10 @@ judgeworker/
 
 ```bash
 # 安装依赖
-pip install redis pydantic pydantic-settings httpx
-
-# 编译 Checker
-g++ checker.cpp -o checker -O2 -std=c++17
+pip install -r requirements.txt
 
 # 启动
-python -m judgeworker.worker
+python worker.py
 ```
 
 ***
